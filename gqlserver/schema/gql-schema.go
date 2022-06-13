@@ -14,12 +14,14 @@ var gqlSchema = `
 	type Query {
 		todo(id: Int!): Todo
 		todos: Todos
+		event(Id: String!): Event
 		events: Events
 	}
 
 	type Mutation {
 		addTodo(title: String!, body: String!, status: String!): Todo
 		createEvent(Id: String!, Title: String!, Description: String!): Event
+		updateEvent(Id: String!, Title: String!, Description: String!): Event
 	}
 
 	type Todo {

@@ -243,7 +243,6 @@ func (r *Resolver) Events() (*EventsResolver, error) {
 	if err != nil {
 		return nil, fmt.Errorf(err.Error())
 	}
-	fmt.Println(string(bodyBytes), err)
 
 	var events Events
 	json.Unmarshal(bodyBytes, &events.Data)
@@ -251,4 +250,66 @@ func (r *Resolver) Events() (*EventsResolver, error) {
 	return &EventsResolver{&Events{
 		Data: events.Data,
 	}}, nil
+}
+
+func (r *Resolver) Event(args struct {
+	Id string
+}) (*EventResolver, error) {
+	client := &http.Client{}
+	url := fmt.Sprintf("%s/events/", constants.Service2_BASE_URL) + fmt.Sprint(args.Id)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf(err.Error())
+	}
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf(err.Error())
+	}
+	defer resp.Body.Close()
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Print(err.Error())
+	}
+
+	event := &Event{}
+	json.Unmarshal(bodyBytes, &event)
+
+	return &EventResolver{event}, nil
+}
+
+func (r *Resolver) UpdateEvent(args struct {
+	Id          string
+	Title       string
+	Description string
+}) (*EventResolver, error) {
+	patchBody, _ := json.Marshal(map[string]string{
+		"Title":       args.Title,
+		"Description": args.Description,
+	})
+	requestBody := bytes.NewBuffer(patchBody)
+
+	client := &http.Client{}
+	url := fmt.Sprintf("%s/events/", constants.Service2_BASE_URL) + fmt.Sprint(args.Id)
+	req, err := http.NewRequest("PATCH", url, requestBody)
+	if err != nil {
+		return nil, fmt.Errorf(err.Error())
+	}
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf(err.Error())
+	}
+	defer resp.Body.Close()
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Print(err.Error())
+	}
+
+	event := &Event{}
+	json.Unmarshal(bodyBytes, &event)
+
+	return &EventResolver{event}, nil
 }
