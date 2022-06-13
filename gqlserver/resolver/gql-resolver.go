@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"gitHub.com/apigee/apigee-gqlserver/gqlserver/constants"
 	"io/ioutil"
 	"net/http"
 )
@@ -37,12 +38,12 @@ func (r *Resolver) Todos() (*TodosResolver, error) {
 	req.Header.Add("Content-Type", "application/json")
 	resp, err := client.Do(req)
 	if err != nil {
-		return &TodosResolver{&todos{}}, fmt.Errorf(err.Error())
+		return nil, fmt.Errorf(err.Error())
 	}
 	defer resp.Body.Close()
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return &TodosResolver{&todos{}}, fmt.Errorf(err.Error())
+		return nil, fmt.Errorf(err.Error())
 	}
 
 	var data todos
@@ -73,13 +74,13 @@ func (r *Resolver) Todo(args struct {
 	url := "http://localhost:8080/todo/" + fmt.Sprint(args.Id)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return &TodoResolver{&todo{}}, fmt.Errorf(err.Error())
+		return nil, fmt.Errorf(err.Error())
 	}
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/json")
 	resp, err := client.Do(req)
 	if err != nil {
-		return &TodoResolver{&todo{}}, fmt.Errorf(err.Error())
+		return nil, fmt.Errorf(err.Error())
 	}
 	defer resp.Body.Close()
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
@@ -130,16 +131,124 @@ func (r *Resolver) AddTodo(args struct {
 	req.Header.Add("Content-Type", "application/json")
 	resp, err := client.Do(req)
 	if err != nil {
-		return &TodoResolver{&todo{}}, fmt.Errorf(err.Error())
+		return nil, fmt.Errorf(err.Error())
 	}
 	defer resp.Body.Close()
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return &TodoResolver{&todo{}}, fmt.Errorf(err.Error())
+		return nil, fmt.Errorf(err.Error())
 	}
 
 	currentTodo := &todo{}
 	json.Unmarshal(bodyBytes, &currentTodo)
 
 	return &TodoResolver{currentTodo}, nil
+}
+
+// Event calls
+type Event struct {
+	ID          string `json:"Id"`
+	Title       string `json:"Title"`
+	Description string `json:"Description"`
+}
+
+type EventResolver struct {
+	event *Event
+}
+
+func (r *EventResolver) Id() *string {
+	return &r.event.ID
+}
+
+func (r *EventResolver) Title() *string {
+	return &r.event.Title
+}
+
+func (r *EventResolver) Description() *string {
+	return &r.event.Description
+}
+
+func (r *Resolver) CreateEvent(args struct {
+	Id          string
+	Title       string
+	Description string
+}) (*EventResolver, error) {
+	postBody, _ := json.Marshal(map[string]string{
+		"Id":          args.Id,
+		"Title":       args.Title,
+		"Description": args.Description,
+	})
+	requestBody := bytes.NewBuffer(postBody)
+
+	client := &http.Client{}
+	url := fmt.Sprintf("%s/event", constants.Service2_BASE_URL)
+	req, err := http.NewRequest("POST", url, requestBody)
+	if err != nil {
+		fmt.Print(err.Error())
+	}
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf(err.Error())
+	}
+	defer resp.Body.Close()
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf(err.Error())
+	}
+
+	newEvent := &Event{}
+	json.Unmarshal(bodyBytes, &newEvent)
+
+	return &EventResolver{newEvent}, nil
+}
+
+type Events struct {
+	Data []Event
+}
+
+type EventsResolver struct {
+	events *Events
+}
+
+func (r *EventsResolver) Data() *[]*EventResolver {
+	list := make([]*EventResolver, len(r.events.Data))
+	for i := range r.events.Data {
+		list[i] = &EventResolver{&r.events.Data[i]}
+	}
+
+	return &list
+}
+
+func (r *Resolver) Events() (*EventsResolver, error) {
+	client := &http.Client{}
+	url := fmt.Sprintf("%s/events", constants.Service2_BASE_URL)
+	req, err := http.NewRequest("GET", url, nil)
+
+	if err != nil {
+		fmt.Print(err.Error())
+	}
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Content-Type", "application/json")
+	resp, err := client.Do(req)
+
+	if err != nil {
+		return nil, fmt.Errorf(err.Error())
+	}
+
+	defer resp.Body.Close()
+
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf(err.Error())
+	}
+	fmt.Println(string(bodyBytes), err)
+
+	var events Events
+	json.Unmarshal(bodyBytes, &events.Data)
+
+	return &EventsResolver{&Events{
+		Data: events.Data,
+	}}, nil
 }
