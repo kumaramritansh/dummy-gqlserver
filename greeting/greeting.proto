@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+option go_package = "gitHub.com/apigee/dummy-grpc/greeting";
+
+package greeting;
+
+message Message {
+  string body = 1;
+}
+
+service GreetingService {
+  rpc SayHello(Message) returns (Message) {}
+}
